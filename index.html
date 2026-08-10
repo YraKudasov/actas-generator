@@ -229,8 +229,8 @@ function loadExample(){var o=EXAMPLE;var set=function(id,v){el(id).value=v;};
   set('comunidad',o.comunidad);set('cif',o.cif);set('tipo',o.tipo);set('fecha',o.fecha);set('hora',o.hora);set('conv',o.conv);
   set('lugar',o.lugar);set('presentes',o.presentes);set('representados',o.representados);set('coef',o.coef);
   set('presidente',o.presidente);set('secretario',o.secretario);set('cierre',o.cierre);
-  el('puntos').innerHTML='';o.puntos.forEach(function(p){addPunto(p);});el('avisos').style.display='none';render();}
-function clearAll(){['comunidad','cif','fecha','hora','lugar','presentes','representados','coef','presidente','secretario','cierre','notas','jsonin'].forEach(function(i){el(i).value='';});el('puntos').innerHTML='';el('avisos').style.display='none';addPunto();render();}
+  el('puntos').innerHTML='';o.puntos.forEach(function(p){addPunto(p);});render();}
+function clearAll(){['comunidad','cif','fecha','hora','lugar','presentes','representados','coef','presidente','secretario','cierre','notas','jsonin'].forEach(function(i){el(i).value='';});el('puntos').innerHTML='';addPunto();render();}
 
 loadExample();
 </script>
