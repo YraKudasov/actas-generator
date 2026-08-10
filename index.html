@@ -198,8 +198,8 @@ function validar(){render();var a=collect();var faltan=[];
 }
 
 function exportWord(){render();
-  var head="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><style>body{font-family:'Times New Roman',serif;font-size:12pt;color:#000} h3{text-align:center;text-transform:uppercase} .sub{text-align:center} .falta{color:#c00;font-weight:bold} .firmas{margin-top:50pt} .firmas div{display:inline-block;width:45%;text-align:center;border-top:1px solid #000}</style></head><body>";
-  var foot="</body></html>";
+  var head="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><style>@page WordSection1{size:21.0cm 29.7cm;margin:2.5cm;mso-page-orientation:portrait} div.WordSection1{page:WordSection1} body{font-family:'Times New Roman',serif;font-size:12pt;color:#000} h3{text-align:center;text-transform:uppercase} .sub{text-align:center} .falta{color:#c00;font-weight:bold} .firmas{margin-top:50pt} .firmas div{display:inline-block;width:45%;text-align:center;border-top:1px solid #000}</style></head><body><div class=WordSection1>";
+  var foot="</div></body></html>";
   var blob=new Blob(['﻿'+head+el('acta').innerHTML+foot],{type:'application/msword'});
   var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='acta.doc';document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
