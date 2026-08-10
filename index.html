@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Generador de Actas de Junta — demo</title>
+<title>Generador de Actas de Junta &mdash; demo</title>
 <style>
   :root{--ink:#1a1a1a;--mut:#666;--line:#ddd;--accent:#1f4e79;--bg:#f4f5f7}
   *{box-sizing:border-box}
@@ -19,27 +19,33 @@
   label{display:block;font-size:12px;color:var(--mut);margin:8px 0 3px}
   input,select,textarea{width:100%;padding:8px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px}
   textarea{resize:vertical}
+  input.err,textarea.err{border-color:#c00;background:#fff5f5}
   .row{display:flex;gap:8px}.row>div{flex:1}
   .btn{display:inline-block;border:0;border-radius:6px;padding:9px 12px;font-size:13px;cursor:pointer;background:var(--accent);color:#fff;margin:2px 2px 0 0}
   .btn.sec{background:#e9edf2;color:var(--accent)}
+  .btn.ok{background:#1f7a44}
   .btn.mini{padding:5px 8px;font-size:12px}
   .toolbar{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:10px 20px;display:flex;gap:6px;flex-wrap:wrap;z-index:5}
   .punto{border:1px solid var(--line);border-radius:8px;padding:10px;margin:8px 0;background:#fafbfc}
   .punto .votos{display:flex;gap:6px}
   .hint{font-size:11px;color:var(--mut);margin:4px 0}
+  #avisos{margin:0 0 12px;padding:10px 12px;border-radius:8px;font-size:13px;display:none}
+  #avisos.bad{display:block;background:#fdecec;border:1px solid #f3b4b4;color:#8a1f1f}
+  #avisos.good{display:block;background:#e8f6ee;border:1px solid #a9d8bd;color:#1f7a44}
   #acta{background:#fff;border:1px solid var(--line);border-radius:10px;padding:40px 46px;font-family:Georgia,'Times New Roman',serif;color:#111;line-height:1.5;font-size:14px}
+  #acta .logo{text-align:center;margin-bottom:12px}
+  #acta .logo img{max-height:70px}
   #acta h3{text-align:center;text-transform:uppercase;font-size:15px;margin:0 0 4px}
   #acta .sub{text-align:center;color:#444;font-size:12px;margin-bottom:18px}
   #acta .meta p{margin:3px 0}
   #acta .punto-doc{margin:14px 0}
   #acta .punto-doc .t{font-weight:bold}
   #acta .acuerdo{margin-top:4px}
-  #acta .acuerdo b{color:#000}
+  #acta .falta{color:#c00;font-weight:bold}
   #acta .firmas{display:flex;justify-content:space-between;margin-top:46px}
   #acta .firmas div{width:45%;border-top:1px solid #333;padding-top:6px;font-size:12px;text-align:center}
-  .tag{display:inline-block;background:#eef3f8;color:var(--accent);border-radius:20px;padding:2px 9px;font-size:11px;font-family:sans-serif}
   @media print{
-    header,.toolbar,.editor,.no-print{display:none!important}
+    header,.toolbar,.editor,.no-print,#avisos{display:none!important}
     .wrap{padding:0;display:block}
     .preview{min-width:0}
     #acta{border:0;border-radius:0;padding:0}
@@ -50,12 +56,14 @@
 <body>
 <header>
   <h1>Generador de Actas de Junta &middot; demo</h1>
-  <p>Notas o audio &rarr; acta redactada en formato legal &rarr; PDF. Prueba interna (Iurii &middot; Creavia).</p>
+  <p>Notas o audio &rarr; acta redactada en formato legal (art. 19 LPH) &rarr; PDF / Word. Iurii &middot; Creavia.</p>
 </header>
 
 <div class="toolbar no-print">
   <button class="btn" onclick="render()">Actualizar acta</button>
-  <button class="btn" onclick="window.print()">Imprimir / Guardar PDF</button>
+  <button class="btn ok" onclick="validar()">Validar (art. 19 LPH)</button>
+  <button class="btn" onclick="window.print()">Imprimir / PDF</button>
+  <button class="btn" onclick="exportWord()">Descargar Word</button>
   <button class="btn sec" onclick="loadExample()">Cargar ejemplo</button>
   <button class="btn sec" onclick="clearAll()">Vaciar</button>
 </div>
@@ -63,15 +71,17 @@
 <div class="wrap">
   <div class="editor no-print">
     <h2>1 &middot; Rellenar con IA (opcional)</h2>
-    <p class="hint">Pega las notas del secretario o la transcripcion del audio. Copia el prompt, ejecutalo en ChatGPT/Claude, y pega aqui el JSON que devuelva para autocompletar.</p>
+    <p class="hint">Pega las notas del secretario o la transcripcion del audio. Copia el prompt, ejecutalo en ChatGPT/Claude, y pega aqui el JSON que devuelva.</p>
     <label>Notas en bruto de la junta</label>
-    <textarea id="notas" rows="4" placeholder="Ej.: Junta ordinaria 15/3. Asisten 12 propietarios, 5 representados, 78% coef. Se aprueban cuentas 2025 por unanimidad..."></textarea>
+    <textarea id="notas" rows="4" placeholder="Ej.: Junta ordinaria 15/3. Asisten 12 propietarios, 5 representados, 78% coef..."></textarea>
     <button class="btn mini" onclick="copyPrompt()">Copiar prompt para IA</button>
     <label>Pegar respuesta de la IA (JSON)</label>
     <textarea id="jsonin" rows="3" placeholder='{"comunidad":"...","puntos":[...]}'></textarea>
     <button class="btn mini" onclick="fillFromJson()">Rellenar acta con el JSON</button>
 
     <h2>2 &middot; Datos de la junta</h2>
+    <label>Logo de la firma (opcional)</label>
+    <input type="file" id="logo" accept="image/*" onchange="loadLogo(event)">
     <label>Comunidad (nombre / direccion)</label>
     <input id="comunidad" placeholder="C.P. Carrer de Provenca, 201, 08008 Barcelona">
     <div class="row">
@@ -88,7 +98,7 @@
 
     <h2>3 &middot; Asistencia y cargos</h2>
     <div class="row">
-      <div><label>Propietarios presentes</label><input id="presentes" type="number" min="0"></div>
+      <div><label>Presentes</label><input id="presentes" type="number" min="0"></div>
       <div><label>Representados</label><input id="representados" type="number" min="0"></div>
       <div><label>% coeficiente</label><input id="coef" type="number" min="0" max="100" step="0.1"></div>
     </div>
@@ -107,73 +117,102 @@
   </div>
 
   <div class="preview">
+    <div id="avisos"></div>
     <div id="acta"></div>
   </div>
 </div>
 
 <script>
+var LOGO='';
 function el(id){return document.getElementById(id)}
 function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function F(l){return '<span class="falta">[FALTA: '+l+']</span>';}
+
+function loadLogo(ev){var f=ev.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){LOGO=e.target.result;render();};r.readAsDataURL(f);}
 
 function puntoRow(p){p=p||{titulo:'',deliberacion:'',acuerdo:'',favor:'',contra:'',abstenciones:''};
-  const d=document.createElement('div');d.className='punto';
-  d.innerHTML=`
-    <label>Titulo del punto</label><input class="pt" value="${esc(p.titulo)}">
-    <label>Deliberacion / resumen</label><textarea class="pd" rows="2">${esc(p.deliberacion)}</textarea>
-    <label>Acuerdo adoptado</label><textarea class="pa" rows="2">${esc(p.acuerdo)}</textarea>
-    <div class="votos">
-      <div><label>A favor</label><input class="pf" type="number" min="0" value="${p.favor}"></div>
-      <div><label>En contra</label><input class="pc" type="number" min="0" value="${p.contra}"></div>
-      <div><label>Abstenc.</label><input class="pab" type="number" min="0" value="${p.abstenciones}"></div>
-      <div style="display:flex;align-items:flex-end"><button class="btn sec mini" onclick="this.closest('.punto').remove();render()">X</button></div>
-    </div>`;
+  var d=document.createElement('div');d.className='punto';
+  d.innerHTML=
+    '<label>Titulo del punto</label><input class="pt" value="'+esc(p.titulo)+'">'+
+    '<label>Deliberacion / resumen</label><textarea class="pd" rows="2">'+esc(p.deliberacion)+'</textarea>'+
+    '<label>Acuerdo adoptado</label><textarea class="pa" rows="2">'+esc(p.acuerdo)+'</textarea>'+
+    '<div class="votos">'+
+      '<div><label>A favor</label><input class="pf" type="number" min="0" value="'+p.favor+'"></div>'+
+      '<div><label>En contra</label><input class="pc" type="number" min="0" value="'+p.contra+'"></div>'+
+      '<div><label>Abstenc.</label><input class="pab" type="number" min="0" value="'+p.abstenciones+'"></div>'+
+      '<div style="display:flex;align-items:flex-end"><button class="btn sec mini" onclick="this.closest(\'.punto\').remove();render()">X</button></div>'+
+    '</div>';
   return d;
 }
 function addPunto(p){el('puntos').appendChild(puntoRow(p));}
-function readPuntos(){return [...document.querySelectorAll('#puntos .punto')].map(x=>({
+function readPuntos(){var out=[];var ns=document.querySelectorAll('#puntos .punto');for(var i=0;i<ns.length;i++){var x=ns[i];out.push({
   titulo:x.querySelector('.pt').value,deliberacion:x.querySelector('.pd').value,acuerdo:x.querySelector('.pa').value,
-  favor:x.querySelector('.pf').value,contra:x.querySelector('.pc').value,abstenciones:x.querySelector('.pab').value}));}
+  favor:x.querySelector('.pf').value,contra:x.querySelector('.pc').value,abstenciones:x.querySelector('.pab').value});}return out;}
 
 function collect(){return{
   comunidad:el('comunidad').value,cif:el('cif').value,tipo:el('tipo').value,fecha:el('fecha').value,hora:el('hora').value,
   conv:el('conv').value,lugar:el('lugar').value,presentes:el('presentes').value,representados:el('representados').value,
   coef:el('coef').value,presidente:el('presidente').value,secretario:el('secretario').value,cierre:el('cierre').value,puntos:readPuntos()};}
 
-function fechaLarga(f){if(!f)return '____';const m=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];const parts=f.split('-');return (+parts[2])+' de '+m[(+parts[1])-1]+' de '+parts[0];}
-function votoTxt(p){const f=+p.favor||0,c=+p.contra||0,a=+p.abstenciones||0;
+function fechaLarga(f){if(!f)return F('fecha');var m=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];var p=f.split('-');return (+p[2])+' de '+m[(+p[1])-1]+' de '+p[0];}
+function hasVote(p){return p.favor||p.contra||p.abstenciones;}
+function votoTxt(p){var f=+p.favor||0,c=+p.contra||0,a=+p.abstenciones||0;
   if(f&&!c&&!a) return 'Se aprueba por <b>unanimidad</b> de los asistentes.';
-  const parts=[];parts.push(f+' a favor');if(c)parts.push(c+' en contra');if(a)parts.push(a+' abstencion(es)');
-  const res=(f>c)?'Se <b>aprueba</b>':'<b>No se aprueba</b>';
+  var parts=[];parts.push(f+' a favor');if(c)parts.push(c+' en contra');if(a)parts.push(a+' abstencion(es)');
+  var res=(f>c)?'Se <b>aprueba</b>':'<b>No se aprueba</b>';
   return res+' por mayoria ('+parts.join(', ')+').';}
 
-function render(){const a=collect();
-  let pts='';a.puntos.forEach((p,i)=>{pts+='<div class="punto-doc"><div class="t">'+(i+1)+'. '+(esc(p.titulo)||'(sin titulo)')+'</div>'+
+function render(){var a=collect();
+  var pts='';a.puntos.forEach(function(p,i){pts+='<div class="punto-doc"><div class="t">'+(i+1)+'. '+(esc(p.titulo)||F('titulo del punto'))+'</div>'+
     (p.deliberacion?'<div>'+esc(p.deliberacion)+'</div>':'')+
-    '<div class="acuerdo"><b>Acuerdo:</b> '+(esc(p.acuerdo)||'-')+' '+((p.acuerdo||p.favor||p.contra||p.abstenciones)?votoTxt(p):'')+'</div></div>';});
-  const total=(+a.presentes||0)+(+a.representados||0);
+    '<div class="acuerdo"><b>Acuerdo:</b> '+(esc(p.acuerdo)||F('acuerdo'))+' '+(hasVote(p)?votoTxt(p):F('votacion'))+'</div></div>';});
+  var total=(+a.presentes||0)+(+a.representados||0);
   el('acta').innerHTML=
+    (LOGO?'<div class="logo"><img src="'+LOGO+'"></div>':'')+
     '<h3>Acta de la Junta '+(a.tipo==='extraordinaria'?'Extraordinaria':'Ordinaria')+' de Propietarios</h3>'+
-    '<div class="sub">'+(esc(a.comunidad)||'Comunidad de Propietarios')+' '+(a.cif?'&middot; CIF '+esc(a.cif):'')+'</div>'+
+    '<div class="sub">'+(esc(a.comunidad)||F('comunidad'))+' '+(a.cif?'&middot; CIF '+esc(a.cif):'')+'</div>'+
     '<div class="meta">'+
-      '<p>En Barcelona, siendo las <b>'+(a.hora||'____')+'</b> horas del dia <b>'+fechaLarga(a.fecha)+'</b>, en <b>'+(esc(a.lugar)||'el inmueble')+'</b>, se reune la Junta de Propietarios en <b>'+(a.conv==='primera'?'primera':'segunda')+' convocatoria</b>.</p>'+
-      '<p>Asisten <b>'+(a.presentes||0)+'</b> propietarios presentes y <b>'+(a.representados||0)+'</b> representados (total <b>'+total+'</b>), que suponen el <b>'+(a.coef||'__')+'%</b> de los coeficientes de participacion, existiendo quorum suficiente.</p>'+
-      '<p>Preside <b>'+(esc(a.presidente)||'____')+'</b> y actua como secretario <b>'+(esc(a.secretario)||'____')+'</b> (administrador de la finca).</p>'+
+      '<p>En Barcelona, siendo las <b>'+(a.hora||F('hora'))+'</b> horas del dia <b>'+fechaLarga(a.fecha)+'</b>, en <b>'+(esc(a.lugar)||F('lugar'))+'</b>, se reune la Junta de Propietarios en <b>'+(a.conv==='primera'?'primera':'segunda')+' convocatoria</b>.</p>'+
+      '<p>Asisten <b>'+(a.presentes||F('presentes'))+'</b> propietarios presentes y <b>'+(a.representados||0)+'</b> representados (total <b>'+total+'</b>), que suponen el <b>'+(a.coef||F('% coeficiente'))+'%</b> de los coeficientes de participacion, existiendo quorum suficiente.</p>'+
+      '<p>Preside <b>'+(esc(a.presidente)||F('presidente'))+'</b> y actua como secretario <b>'+(esc(a.secretario)||F('secretario'))+'</b> (administrador de la finca).</p>'+
     '</div>'+
     '<p style="margin-top:14px"><b>Orden del dia y acuerdos:</b></p>'+
-    (pts||'<p><i>Sin puntos.</i></p>')+
-    '<p style="margin-top:14px">Sin mas asuntos que tratar, se levanta la sesion siendo las <b>'+(a.cierre||'____')+'</b> horas, de todo lo cual, como secretario, doy fe.</p>'+
+    (pts||'<p>'+F('al menos un punto del orden del dia')+'</p>')+
+    '<p style="margin-top:14px">Sin mas asuntos que tratar, se levanta la sesion siendo las <b>'+(a.cierre||F('hora de cierre'))+'</b> horas, de todo lo cual, como secretario, doy fe.</p>'+
     '<div class="firmas"><div>El/la Secretario/a-Administrador/a<br>'+(esc(a.secretario)||'')+'</div><div>El/la Presidente/a<br>'+(esc(a.presidente)||'')+'</div></div>';
 }
 
-function copyPrompt(){const notas=el('notas').value||'(pega aqui las notas)';
-  const schema='{"comunidad":"","cif":"","tipo":"ordinaria|extraordinaria","fecha":"YYYY-MM-DD","hora":"HH:MM","conv":"primera|segunda","lugar":"","presentes":0,"representados":0,"coef":0,"presidente":"","secretario":"","cierre":"HH:MM","puntos":[{"titulo":"","deliberacion":"","acuerdo":"","favor":0,"contra":0,"abstenciones":0}]}';
-  const prompt='Actua como secretario de una comunidad de propietarios en Espana (Ley de Propiedad Horizontal). A partir de estas NOTAS de la junta, redacta el contenido y devuelve UNICAMENTE un JSON valido con este esquema exacto (sin texto adicional):\n'+schema+'\n\nReglas: redacta "deliberacion" y "acuerdo" en espanol formal y neutro; si un punto se aprobo sin oposicion pon favor=n asistentes, contra=0, abstenciones=0; no inventes datos que no esten en las notas (dejalos vacios).\n\nNOTAS:\n'+notas;
-  navigator.clipboard.writeText(prompt).then(function(){alert('Prompt copiado. Pegalo en ChatGPT/Claude, y pega aqui el JSON que devuelva.');},function(){el('jsonin').value=prompt;alert('No se pudo copiar; el prompt esta en el campo JSON, cortalo desde ahi.');});
+function validar(){render();var a=collect();var faltan=[];
+  var reqs=[['comunidad','Comunidad'],['fecha','Fecha'],['hora','Hora'],['lugar','Lugar'],['presentes','Presentes'],['coef','% coeficiente'],['presidente','Presidente'],['secretario','Secretario'],['cierre','Hora de cierre']];
+  reqs.forEach(function(r){var inp=el(r[0]);if(!inp.value){inp.classList.add('err');faltan.push(r[1]);}else{inp.classList.remove('err');}});
+  var ns=document.querySelectorAll('#puntos .punto');
+  if(ns.length===0)faltan.push('Al menos un punto del orden del dia');
+  for(var i=0;i<ns.length;i++){var x=ns[i];var t=x.querySelector('.pt'),ac=x.querySelector('.pa');
+    if(!t.value){t.classList.add('err');faltan.push('Punto '+(i+1)+': titulo');}else t.classList.remove('err');
+    if(!ac.value){ac.classList.add('err');faltan.push('Punto '+(i+1)+': acuerdo');}else ac.classList.remove('err');
+    var f=x.querySelector('.pf').value,c=x.querySelector('.pc').value,ab=x.querySelector('.pab').value;
+    if(!f&&!c&&!ab)faltan.push('Punto '+(i+1)+': votacion');}
+  var av=el('avisos');
+  if(faltan.length){av.className='bad';av.innerHTML='<b>Faltan datos obligatorios (art. 19 LPH):</b><br>&bull; '+faltan.join('<br>&bull; ');}
+  else{av.className='good';av.innerHTML='&#10003; El acta cumple los datos minimos exigidos por el art. 19 de la Ley de Propiedad Horizontal.';}
+}
+
+function exportWord(){render();
+  var head="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><style>body{font-family:'Times New Roman',serif;font-size:12pt;color:#000} h3{text-align:center;text-transform:uppercase} .sub{text-align:center} .falta{color:#c00;font-weight:bold} .firmas{margin-top:50pt} .firmas div{display:inline-block;width:45%;text-align:center;border-top:1px solid #000}</style></head><body>";
+  var foot="</body></html>";
+  var blob=new Blob(['﻿'+head+el('acta').innerHTML+foot],{type:'application/msword'});
+  var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='acta.doc';document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+function copyPrompt(){var notas=el('notas').value||'(pega aqui las notas)';
+  var schema='{"comunidad":"","cif":"","tipo":"ordinaria|extraordinaria","fecha":"YYYY-MM-DD","hora":"HH:MM","conv":"primera|segunda","lugar":"","presentes":0,"representados":0,"coef":0,"presidente":"","secretario":"","cierre":"HH:MM","puntos":[{"titulo":"","deliberacion":"","acuerdo":"","favor":0,"contra":0,"abstenciones":0}]}';
+  var prompt='Actua como secretario de una comunidad de propietarios en Espana (Ley de Propiedad Horizontal). A partir de estas NOTAS de la junta, redacta el contenido y devuelve UNICAMENTE un JSON valido con este esquema exacto (sin texto adicional):\n'+schema+'\n\nReglas: redacta "deliberacion" y "acuerdo" en espanol formal y neutro; si un punto se aprobo sin oposicion pon favor=n asistentes, contra=0, abstenciones=0; no inventes datos que no esten en las notas (dejalos vacios).\n\nNOTAS:\n'+notas;
+  navigator.clipboard.writeText(prompt).then(function(){alert('Prompt copiado. Pegalo en ChatGPT/Claude y pega aqui el JSON.');},function(){el('jsonin').value=prompt;alert('El prompt esta en el campo JSON; cortalo desde ahi.');});
 }
 
 function fillFromJson(){var t=el('jsonin').value.trim();
   var s=t.indexOf('{'),e=t.lastIndexOf('}');if(s>=0&&e>=0)t=t.slice(s,e+1);
-  var o;try{o=JSON.parse(t);}catch(err){alert('JSON no valido. Revisa que pegaste solo el objeto {...}.');return;}
+  var o;try{o=JSON.parse(t);}catch(err){alert('JSON no valido. Pega solo el objeto {...}.');return;}
   var set=function(id,v){if(v!==undefined&&v!==null)el(id).value=v;};
   set('comunidad',o.comunidad);set('cif',o.cif);set('tipo',o.tipo);set('fecha',o.fecha);set('hora',o.hora);
   set('conv',o.conv);set('lugar',o.lugar);set('presentes',o.presentes);set('representados',o.representados);
@@ -190,8 +229,8 @@ function loadExample(){var o=EXAMPLE;var set=function(id,v){el(id).value=v;};
   set('comunidad',o.comunidad);set('cif',o.cif);set('tipo',o.tipo);set('fecha',o.fecha);set('hora',o.hora);set('conv',o.conv);
   set('lugar',o.lugar);set('presentes',o.presentes);set('representados',o.representados);set('coef',o.coef);
   set('presidente',o.presidente);set('secretario',o.secretario);set('cierre',o.cierre);
-  el('puntos').innerHTML='';o.puntos.forEach(function(p){addPunto(p);});render();}
-function clearAll(){['comunidad','cif','fecha','hora','lugar','presentes','representados','coef','presidente','secretario','cierre','notas','jsonin'].forEach(function(i){el(i).value='';});el('puntos').innerHTML='';addPunto();render();}
+  el('puntos').innerHTML='';o.puntos.forEach(function(p){addPunto(p);});el('avisos').style.display='none';render();}
+function clearAll(){['comunidad','cif','fecha','hora','lugar','presentes','representados','coef','presidente','secretario','cierre','notas','jsonin'].forEach(function(i){el(i).value='';});el('puntos').innerHTML='';el('avisos').style.display='none';addPunto();render();}
 
 loadExample();
 </script>
