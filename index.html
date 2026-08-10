@@ -179,7 +179,7 @@ function render(){var a=collect();
     '<p style="margin-top:14px"><b>Orden del dia y acuerdos:</b></p>'+
     (pts||'<p>'+F('al menos un punto del orden del dia')+'</p>')+
     '<p style="margin-top:14px">Sin mas asuntos que tratar, se levanta la sesion siendo las <b>'+(a.cierre||F('hora de cierre'))+'</b> horas, de todo lo cual, como secretario, doy fe.</p>'+
-    '<div class="firmas"><div>El/la Secretario/a-Administrador/a<br>'+(esc(a.secretario)||'')+'</div><div>El/la Presidente/a<br>'+(esc(a.presidente)||'')+'</div></div>';
+    '<table style="width:100%;margin-top:46px;border-collapse:collapse"><tr><td style="width:45%;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:12px">El/la Secretario/a-Administrador/a<br>'+(esc(a.secretario)||'')+'</td><td style="width:10%"></td><td style="width:45%;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:12px">El/la Presidente/a<br>'+(esc(a.presidente)||'')+'</td></tr></table>';
 }
 
 function validar(){render();var a=collect();var faltan=[];
